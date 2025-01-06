@@ -1,14 +1,13 @@
 # import the fabric api for mod initialization
+from com.mojang.authlib import GameProfile
 from net.fabricmc.api import ModInitializer
 from net.minecraft.client import MinecraftClient
-from com.mojang.authlib import GameProfile
-from org.slf4j import LoggerFactory
-from org.slf4j import Logger
 from pythonvm.api import implements
+
 
 @implements(ModInitializer)
 class ExampleMod:
-    def on_initialize(self):
+    def onInitialize(self):
         print("Hello Fabric world!")
 
         client: MinecraftClient = MinecraftClient.getInstance()
