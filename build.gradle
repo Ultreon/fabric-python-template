@@ -90,7 +90,7 @@ tasks.register("generateStubs", JavaExec) {
     classpath = files("libs/lang-gen-0.0.1.jar") + sourceSets.main.runtimeClasspath
 
     mainClass = "dev.ultreon.langgen.Main"
-    args = ["--py", "-o", file("stubs").path]
+    args = ["--py", "-o", file("src/generated/stubs").path]
 }
 
 sourcesJar {

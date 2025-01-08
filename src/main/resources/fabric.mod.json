@@ -11,10 +11,10 @@
   "environment": "*",
   "entrypoints": {
     "client": [
-      "com.example.client.ExampleModClient"
+      "example.client.ExampleModClient"
     ],
     "main": [
-      "com.example.ExampleMod"
+      "example.ExampleMod"
     ]
   },
   "mixins": [
