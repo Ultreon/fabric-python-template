@@ -2,8 +2,16 @@ pluginManagement {
     repositories {
         maven {
             name = 'Fabric'
-            url = 'https://maven.fabricmc.net/'
+            url = 'https://maven2.fabricmc.net/'
         }
         gradlePluginPortal()
+
+        removeIf { repository ->
+            try {
+                return repository.url.toString().contains("maven.fabricmc.net")
+            } catch(ignored) {
+                return false
+            }
+        }
     }
 }

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "example",
+  "version": "1.0.0",
+  "name": "Example Python Fabric Mod",
+  "entrypoints": {
+    "main": [
+      {
+        "adapter": "python",
+        "value": "example.fabric_main"
+      }
+    ],
+    "client": [
+      {
+        "adapter": "python",
+        "value": "example.client.fabric_client"
+      }
+    ]
+  }
+}

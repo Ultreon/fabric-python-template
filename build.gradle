@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.9-SNAPSHOT'
+    id "net.fabricmc.fabric-loom-no-remap" version "1.14.0-alpha.20"
     id 'maven-publish'
 
     // Python
@@ -13,6 +13,11 @@ base {
     archivesName = project.archives_base_name
 }
 
+fabricApi {
+    configureDataGeneration {
+        client = true
+    }
+}
 
 repositories {
     // Add repositories to retrieve artifacts from in here.
@@ -20,21 +25,33 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+    mavenLocal()
 
     flatDir {
         dirs "libs"
+    }
+
+    maven {
+        url "https://maven2.fabricmc.net/"
+    }
+
+    removeIf { repository ->
+        try {
+            return repository.url.toString().contains("maven.fabricmc.net")
+        } catch(ignored) {
+            return false
+        }
     }
 }
 
 dependencies {
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    include "dev.ultreon.pythonvm:pylib:1.0.0"
+    include implementation("dev.ultreon.fabric:fabric-language-python:0.1-SNAPSHOT")
 }
 
 processResources {
@@ -73,16 +90,6 @@ java {
     withSourcesJar()
 }
 
-tasks.register("compilePython", JavaExec) {
-    workingDir file(".").absolutePath
-
-    // Use libs/pythonvm-compiler.jar
-    classpath = files("libs/pythonvm-compiler.jar") + sourceSets.main.runtimeClasspath
-
-    mainClass = "dev.ultreon.pythonc.App"
-    args = ["-o", file("build/pythonvm.jar").path, file("src/main/python").path]
-}
-
 tasks.register("generateStubs", JavaExec) {
     workingDir file(".").absolutePath
 
@@ -98,13 +105,9 @@ sourcesJar {
 }
 
 jar {
-    dependsOn compilePython
-
     from("LICENSE") {
         rename { "${it}_${project.archivesBaseName}" }
     }
-
-    from zipTree("build/pythonvm.jar")
 }
 
 // configure the maven publication
@@ -122,5 +125,15 @@ publishing {
         // Notice: This block does NOT have the same function as the block in the top level.
         // The repositories here will be used for publishing your artifact, not for
         // retrieving dependencies.
+    }
+}
+
+afterEvaluate {
+    repositories.removeIf { repository ->
+        try {
+            return repository.url.toString().contains("maven.fabricmc.net")
+        } catch(ignored) {
+            return false
+        }
     }
 }

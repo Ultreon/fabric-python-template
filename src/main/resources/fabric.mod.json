@@ -11,18 +11,22 @@
   "environment": "*",
   "entrypoints": {
     "client": [
-      "example.client.ExampleModClient"
+      {
+        "adapter": "python",
+        "value": "example.client.fabric_client"
+      }
     ],
     "main": [
-      "example.ExampleMod"
+      {
+        "adapter": "python",
+        "value": "example.fabric_main"
+      }
     ]
   },
   "mixins": [
     "example.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=${loader_version}",
-    "fabric": "*",
-    "minecraft": "${minecraft_version}"
+    "fabricloader": ">=0.16.9"
   }
 }
