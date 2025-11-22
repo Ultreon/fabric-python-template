@@ -38,7 +38,7 @@ repositories {
     removeIf { repository ->
         try {
             return repository.url.toString().contains("maven.fabricmc.net")
-        } catch(ignored) {
+        } catch (ignored) {
             return false
         }
     }
@@ -132,7 +132,7 @@ afterEvaluate {
     repositories.removeIf { repository ->
         try {
             return repository.url.toString().contains("maven.fabricmc.net")
-        } catch(ignored) {
+        } catch (ignored) {
             return false
         }
     }

@@ -17,81 +17,107 @@ Functions:
     - onInitialize: Entry point for mod initialization, handling the Minecraft client instance,
       logging, and error management.
 """
-from typing import Callable
+import sys
+from typing import Callable, override
 
+from com.mojang.authlib import GameProfile
 from java.util.function import Function
+from net.minecraft.client import Minecraft
+from net.minecraft.core import Registry, BlockPos
+from net.minecraft.core.registries import Registries, BuiltInRegistries
+from net.minecraft.resources import Identifier, ResourceKey
+from net.minecraft.sounds import SoundSource, SoundEvents
+from net.minecraft.world import InteractionResult
+from net.minecraft.world.entity.player import Player
+from net.minecraft.world.item import Item, BlockItem
+from net.minecraft.world.level import Level
+from net.minecraft.world.level.block import Block, SoundType
+from net.minecraft.world.level.block.state import BlockState, BlockBehaviour, StateDefinition
+from net.minecraft.world.level.block.state.properties import BooleanProperty
+from net.minecraft.world.phys import BlockHitResult
+from org.slf4j import LoggerFactory
 
-try:
-    import sys
-    from java.lang import Class
-    from java.util.function import Function
-    from com.mojang.authlib import GameProfile
-    from net.minecraft.client import Minecraft
-    from net.minecraft.core import Registry
-    from net.minecraft.core.registries import Registries, BuiltInRegistries
-    from net.minecraft.resources import Identifier, ResourceKey
-    from net.minecraft.world.item import Item, BlockItem
-    from net.minecraft.world.level.block import Block
-    from net.minecraft.world.level.block.state import BlockBehaviour
-    from org.slf4j import LoggerFactory
-
-    LOGGER = LoggerFactory.getLogger("example:py")
-
-
-    class TutorialBlocks:
-        example_block = None
+LOGGER = LoggerFactory.getLogger("example:py")
 
 
-    def key_of_block(name: str) -> ResourceKey:
-        return ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("example", name))
+class TutorialBlocks:
+    example_block = None
 
 
-    def key_of_item(name: str) -> ResourceKey:
-        return ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("example", name))
+def key_of_block(name: str) -> ResourceKey:
+    return ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("example", name))
 
 
-    def register_item(name: str, item_factory: Callable[[Item.Properties], Item], settings: Item.Properties) -> Item:
-        item_key = key_of_item(name)
-        item = item_factory(settings.setId(item_key))
-        return Registry.register(BuiltInRegistries.ITEM, item_key, item)
+def key_of_item(name: str) -> ResourceKey:
+    return ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("example", name))
 
 
-    def register(path: str, factory: Function, settings, should_register_item: bool = True) -> Block:
-        block_key = key_of_block(path)
-        block = factory(settings.setId(block_key))
-
-        if should_register_item:
-            item_key = key_of_item(path)
-            block_item = BlockItem(block, Item.Properties().setId(item_key).useBlockDescriptionPrefix())
-            Registry.register(BuiltInRegistries.ITEM, item_key, block_item)
-
-        return Registry.register(BuiltInRegistries.BLOCK, block_key, block)
+def register_item(name: str, item_factory: Callable[[Item.Properties], Item], settings: Item.Properties) -> Item:
+    item_key = key_of_item(name)
+    item = item_factory(settings.setId(item_key))
+    Registry.register(BuiltInRegistries.ITEM, item_key, item)
+    return item
 
 
-    def init():
-        LOGGER.info("Hello from Fabric on Python!")
+class CustomBlock(Block):
+    ACTIVATED = BooleanProperty.create("activated")
 
-        # TutorialBlocks.example_block = register("example_block", lambda props: Block(props), BlockBehaviour.Properties.of().strength(4.0))
-        register_item("suspicious_substance", lambda props: Item(props), Item.Properties())
+    def __init__(self, settings: BlockBehaviour.Properties):
+        super().__init__(settings)
+
+        self.registerDefaultState(self.defaultBlockState().setValue(CustomBlock.ACTIVATED, False))
+
+    @override
+    def createBlockStateDefinition(self, builder: StateDefinition.Builder) -> StateDefinition.Builder:
+        return super().createBlockStateDefinition(builder.add(CustomBlock.ACTIVATED))
+
+    # noinspection PyUnusedLocal
+    @override
+    def useWithoutItem(self, state: BlockState, world: Level, pos: BlockPos, player: Player,
+                       hit: BlockHitResult) -> InteractionResult:
+        if not player.getAbilities().mayBuild:
+            return InteractionResult.PASS
+        else:
+            activated = state.getValue(CustomBlock.ACTIVATED)
+            world.setBlockAndUpdate(pos, state.setValue(CustomBlock.ACTIVATED, not activated))
+            world.playSound(player, pos, SoundEvents.COMPARATOR_CLICK, SoundSource.BLOCKS, 1.0, 1.0)
+            return InteractionResult.SUCCESS
 
 
-    def onInitialize() -> None:
-        try:
-            client = Minecraft.getInstance()
-            game_profile: GameProfile = client.getGameProfile()
-            name: str = game_profile.name()
+def register_block(path: str, factory: Callable[[BlockBehaviour.Properties], Block], settings: Block.Properties, should_register_item: bool = True) -> Block:
+    block_key = key_of_block(path)
+    block = factory(settings.setId(block_key))
 
-            LOGGER.info("Hello {}!", name)
+    if should_register_item:
+        item_key = key_of_item(path)
+        block_item = BlockItem(block, Item.Properties().setId(item_key).useBlockDescriptionPrefix())
+        Registry.register(BuiltInRegistries.ITEM, item_key, block_item)
 
-            init()
-        except Exception as e:
-            print("Example mod failed to load!", file=sys.stderr)
-            import traceback
-            for line in "".join(traceback.format_exception(e)).splitlines():
-                LOGGER.error(line)
-            raise e
-except BaseException as e:
-    import traceback
+    Registry.register(BuiltInRegistries.BLOCK, block_key, block)
+    return block
 
-    traceback.print_exception(e, file=sys.stderr)
-    raise e
+
+def init():
+    LOGGER.info("Hello from Fabric on Python!")
+
+    # TutorialBlocks.example_block = register("example_block", lambda props: Block(props), BlockBehaviour.Properties.of().strength(4.0))
+    register_item("suspicious_substance", lambda props: Item(props), Item.Properties())
+    of = Block.Properties.of()
+    register_block("prismarine_lamp", lambda props: CustomBlock(props), of.sound(SoundType.GLASS))
+
+
+def onInitialize() -> None:
+    try:
+        client = Minecraft.getInstance()
+        game_profile: GameProfile = client.getGameProfile()
+        name: str = game_profile.name()
+
+        LOGGER.info("Hello {}!", name)
+
+        init()
+    except Exception as e:
+        print("Example mod failed to load!", file=sys.stderr)
+        import traceback
+        for line in "".join(traceback.format_exception(e)).splitlines():
+            LOGGER.error(line)
+        raise e
